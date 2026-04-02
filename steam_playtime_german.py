@@ -13,6 +13,9 @@ HA_URL = "http://127.0.0.1:58123"            # Deine HA-IP inklusive Port
 HA_TOKEN = "DEIN_LANGLEBIGER_ZUGANGS_TOKEN"   # Dein Langlebiger Zugangs-Token
 HA_NOTIFY_SERVICE = "notify/matrix_xxx"  # Der genutzte Notify-Dienst
 
+# Steuerung der Benachrichtigungen
+SUCCESS_MESSAGES = True   # True = Erfolge an HA senden / False = Nur Fehler senden
+
 # ==========================================
 # PAYLOAD-PROFILE (BASE64 STRINGS EINTRAGEN)
 # ==========================================
@@ -28,7 +31,11 @@ PAYLOADS = {
 # BENACHRICHTIGUNGS-FUNKTION
 # ==========================================
 def send_notification(message, is_error=False):
-    """Sendet Erfolgs- oder Fehlermeldungen an den konfigurierten HA Notify Service."""
+    """Sendet Fehlermeldungen (und auf Wunsch Erfolgsmeldungen) an HA."""
+    # Wenn es kein Fehler ist und SUCCESS_MESSAGES auf False steht, brechen wir hier leise ab.
+    if not is_error and not SUCCESS_MESSAGES:
+        return
+
     url = f"{HA_URL.rstrip('/')}/api/services/{HA_NOTIFY_SERVICE}"
     headers = {
         "Authorization": f"Bearer {HA_TOKEN}",
