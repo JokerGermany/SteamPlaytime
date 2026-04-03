@@ -19,7 +19,7 @@ Switch in Firefox to https://store.steampowered.com/account/familymanagement, (P
 Click in HA on your Name, then on the Tab Security, then on create Token.
 ### Payloads
 Switch to the Playtime of your kid on the Steam Homepage. Change the Time to your needs, Press CRTL+Shift+E, click on confirm on the Steam HomePage.
-In the column method there Will appear POST. Richt click on it -> Copy Value -> Copy Post Data. You only need the Long string between  
+In the column method there will appear POST. Right click on it -> Copy Value -> Copy Post Data. You only need the Long string between  
 ```
 ------geckoformboundarya43bcd1dcf50c7b5ca8f18d3a404d80f
 Content-Disposition: form-data; name="input_protobuf_encoded"
