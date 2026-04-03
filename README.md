@@ -16,18 +16,20 @@ This is how to do it with Firefox, but you can ask the KI for other ways ;)
 Switch in Firefox to https://store.steampowered.com/account/familymanagement, (Press Shift+F9), click under Cookies on https://store.steampowered.com . Copy everything from Value at steamLoginSecure/sessionid/steamparental
 ### HA_TOKEN
 Click in HA on your Name, then on the Tab Security, then on create Token.
-## What paramenters do the script Accept:
-MILITARY TIME!  
-Example:  
-`python3 steam_playtime_week.py Su-Th 09:00 - 20:30 Fri-Sat 09:00 - 22:30`  
-(Additional blocks can be added, e.g., `Su-Th 09:00 - 20:30 Fri 09:00 - 22:30 Sat 10:00 - 23:00`, as long as they are always in sets of three).  
-[If you want to confuse people, you can also use German abbreviations for the days of the week.]  
 ## Home Assistant
 ### Where to save the script when using with HA
 Somewhere in the HomeAssistant config folder.  
 **DON'T SAVE THE SCRIPT TO python_scripts. SCRIPTS IN THIS FOLDER ARE RESTRICTED!**  
 e.g. create a folder scripts. I will use scripts in this README!
-### How to add the script to HA
+## steam_playtime_week.py
+### What paramenters do the script Accept:
+MILITARY TIME!  
+Example:  
+`python3 steam_playtime_week.py Su-Th 09:00 - 20:30 Fri-Sat 09:00 - 22:30`  
+(Additional blocks can be added, e.g., `Su-Th 09:00 - 20:30 Fri 09:00 - 22:30 Sat 10:00 - 23:00`, as long as they are always in sets of three).  
+[If you want to confuse people, you can also use German abbreviations for the days of the week.]  
+### Home Assistant
+#### How to add the script to HA
 you need to insert the following in the configuration.yaml:
 ```
 shell_command:
@@ -37,13 +39,14 @@ shell_command:
 With variables:
 ```
 shell_command:
+  steam_set_locked: Mo-Su 00:00 00:00
   steam_set_weekly_plan: >
     python3 /config/scripts/steam_playtime_week.py {{ states('input_text.kid_good_night_alarm_day_workingDays') }} {{ states('input_datetime.kid_good_night_alarm_heute_morgen')[:5] }} {{ states('input_datetime.kid_good_night_alarm_workingDays')[:5] }} {{ states('input_text.kid_good_night_alarm_day_notWorkingDays') }} {{ states('input_datetime.kid_good_night_alarm_morning')[:5] }} {{ states('input_datetime.kid_good_night_alarm_notWorkingDays')[:5] }}
 ```
-### How to use in HA
+#### How to use in HA
 https://www.home-assistant.io/integrations/shell_command#examples
 
-### Example Automation in HA
+#### Example Automation in HA
 If one of the variables is changed it will trigger and set the schedule in Steam
 ```
 alias: kid Weekly Game schedule
