@@ -66,3 +66,5 @@ actions:
     data: {}
 mode: single
 ```
+## Credits
+Thanks to @xPaw for [publishing the undocumented API](https://steamapi.xpaw.me/IParentalService)!
