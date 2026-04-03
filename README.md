@@ -17,10 +17,10 @@ Switch in Firefox to https://store.steampowered.com/account/familymanagement, (P
 ### HA_TOKEN
 Click in HA on your Name, then on the Tab Security, then on create Token.
 ## What paramenters do the script Accept:
-MILITARY TIME! 
+MILITARY TIME!  
 Example:  
-python3 steam_playtime_week.py Su-Th 09:00 - 20:30 Fri-Sat 09:00 - 22:30  
-(Additional blocks can be added, e.g., Su-Th 09:00 - 20:30 Fri 09:00 - 22:30 Sat 10:00 - 23:00, as long as they are always in sets of three).  
+`python3 steam_playtime_week.py Su-Th 09:00 - 20:30 Fri-Sat 09:00 - 22:30`  
+(Additional blocks can be added, e.g., `Su-Th 09:00 - 20:30 Fri 09:00 - 22:30 Sat 10:00 - 23:00`, as long as they are always in sets of three).  
 [If you want to confuse people, you can also use German abbreviations for the days of the week.]  
 ## Home Assistant
 ### Where to save the script when using with HA
