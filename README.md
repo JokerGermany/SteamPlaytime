@@ -34,8 +34,8 @@ You can use as many payloads as you want, just add another
 ```
 ## Home Assistant
 ### Where to save the script when using with HA
-Somewhere in the HomeAssistant config folder. 
-**DON'T SAVE THE SCRIPT TO python_scripts. SCRIPTS IN THIS FOLDER ARE RESTRICTED!**
+Somewhere in the HomeAssistant config folder.  
+**DON'T SAVE THE SCRIPT TO python_scripts. SCRIPTS IN THIS FOLDER ARE RESTRICTED!**  
 e.g. create a folder scripts. I will use scripts in this README!
 ### How to add the script to HA
 you need to insert the following in the configuration.yaml:
