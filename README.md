@@ -32,7 +32,7 @@ you need to insert the following in the configuration.yaml:
 ```
 shell_command:
   <chooseAUniqueName1: >
-    python3 /config/scripts/steam_playtime_week.py "Su-Th 09"
+    python3 /config/scripts/steam_playtime_week.py Su-Th 09:00 20:30 Fr-Sa 09:00 22:30
 ```
 With variables:
 ```
