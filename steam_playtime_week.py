@@ -18,17 +18,6 @@ HA_NOTIFY_SERVICE = "notify/matrix_xxx"  # The HA notify service to use
 SUCCESS_MESSAGES = True   # True = send success messages to HA / False = send errors only
 
 # ==========================================
-# PAYLOAD PROFILES (ENTER BASE64 STRINGS)
-# ==========================================
-PAYLOADS = {
-    "normal": "ENTER_YOUR_PAYLOAD_FOR_LOCKED_HERE",
-    "unrestricted": "ENTER_YOUR_PAYLOAD_FOR_LOCKED_HERE",
-    "locked": "ENTER_YOUR_PAYLOAD_FOR_LOCKED_HERE",
-    "weekdays": "ENTER_YOUR_PAYLOAD_FOR_WEEKDAYS_HERE",
-    "weekend": "ENTER_YOUR_PAYLOAD_FOR_WEEKENDS_HERE",
-}
-
-# ==========================================
 # HELPER FUNCTIONS
 # ==========================================
 def send_notification(message, is_error=False):
