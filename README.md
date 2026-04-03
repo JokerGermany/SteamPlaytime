@@ -32,3 +32,33 @@ You can use as many payloads as you want, just add another
 ```
 "<your-name-here>": "ENTER_YOUR_PAYLOAD_FOR_LOCKED_HERE",
 ```
+## Home Assistant
+### Where to save the script when using with HA
+Somewhere in the HomeAssistant config folder. 
+**DON'T SAVE THE SCRIPT TO python_scripts. SCRIPTS IN THIS FOLDER ARE RESTRICTED!**
+e.g. create a folder scripts. I will use scripts in this README!
+### How to add the script to HA
+you need to insert the following in the configuration.yaml:
+```
+shell_command:
+  <chooseAUniqueName1: >
+    python3 /config/scripts/steam_playtime.py "<Payload-Name1>"
+  <chooseAUniqueName2: >
+    python3 /config/scripts/steam_playtime.py "<Payload-Name2>"
+```
+If you use the example, it could look like this:
+```
+shell_command:
+  steam_set_normal: >
+    python3 /config/scripts/steam_playtime.py "normal"
+  steam_set_unrestricted: >
+    python3 /config/scripts/steam_playtime.py "unrestricted"
+  steam_set_locked: >
+    python3 /config/scripts/steam_playtime.py "locked"
+  steam_set_weekdays: >
+    python3 /config/scripts/steam_playtime.py "weekdays"
+  steam_set_weekend: >
+    python3 /config/scripts/steam_playtime.py "weekend"
+```
+### How to use in HA
+https://www.home-assistant.io/integrations/shell_command#examples
