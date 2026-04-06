@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 # CONFIGURATION (ENTER YOUR VALUES HERE)
 # ==========================================
 COOKIE_FILE = "/config/steam-auth/steam-state.json"
-STEAM_PARENTAL = "YOUR_STEAM_PARENTAL_COOKIE"
 STEAM_ID_CHILD = "YOUR_CHILD_STEAM_ID"
 
 # Home Assistant Connection
