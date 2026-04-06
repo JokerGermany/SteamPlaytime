@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # KONFIGURATION (HIER DEINE WERTE EINTRAGEN)
 # ==========================================
 COOKIE_FILE = "/config/steam-auth/steam-state.json"
-SESSION_ID = "DEINE_SESSION_ID"
+STEAM_ID_KIND = "DEINE_STEAMID64_DES_KINDES"
 
 # Home Assistant Anbindung
 HA_URL = "http://127.0.0.1:58123"            # Deine HA-IP inklusive Port
