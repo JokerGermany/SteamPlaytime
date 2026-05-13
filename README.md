@@ -171,6 +171,7 @@ to:
 
 ```ini
 -e STEAM_REQUIRE_PARENTAL=true \
+-e STEAM_PARENTAL_PIN=1234 \
 ```
 
 ---
