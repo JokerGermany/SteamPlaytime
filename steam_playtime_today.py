@@ -1,4 +1,5 @@
 import sys
+import time
 import requests
 import json
 from pathlib import Path
@@ -8,15 +9,21 @@ from datetime import datetime, timedelta
 # CONFIGURATION (ENTER YOUR VALUES HERE)
 # ==========================================
 COOKIE_FILE = "/config/steam-auth/steam-state.json"
-STEAM_ID_CHILD = "YOUR_CHILD_STEAM_ID"
+CHILD_STEAM_ID = "YOUR_CHILD_STEAM_ID"
 
 # Home Assistant Connection
-HA_URL = "http://127.0.0.1:58123"            # Your HA IP including port
-HA_TOKEN = "YOUR_LONG_LIVED_ACCESS_TOKEN"    # Your Long-Lived Access Token
-HA_NOTIFY_SERVICE = "notify/matrix_xxx"      # The notify service used
+HA_URL = "http://127.0.0.1:58123"
+HA_TOKEN = "YOUR_LONG_LIVED_ACCESS_TOKEN"
+HA_NOTIFY_SERVICE = "notify/matrix_xxx"
 
 # Notification Settings
-SUCCESS_MESSAGES = True   # True = Send success to HA / False = Send errors only
+SUCCESS_MESSAGES = True
+
+# Automatic cookie refresh via container API
+LOGIN_REFRESH_URL = "http://127.0.0.1:8099/api/steam/login"
+LOGIN_REFRESH_TIMEOUT = 360
+LOGIN_RETRY_WAIT_SECONDS = 5
+MAX_LOGIN_REFRESH_ATTEMPTS = 1
 
 # ==========================================
 # HELPER FUNCTIONS
@@ -45,7 +52,9 @@ def send_notification(message, is_error=False):
 
 
 def time_to_bit(time_str):
-    hours, minutes = map(int, time_str.split(':'))
+    if time_str == "24:00":
+        time_str = "23:59"
+    hours, minutes = map(int, time_str.split(":"))
     return hours * 2 + (1 if minutes >= 30 else 0)
 
 
@@ -85,13 +94,29 @@ def get_cookie(cookies, name, domain_contains=None):
     return None
 
 
+def get_parental_cookie(cookies):
+    steam_parental = get_cookie(cookies, "steamparental", "store.steampowered.com")
+    if steam_parental:
+        return steam_parental, "steamparental"
+
+    for cookie in cookies:
+        name = cookie.get("name", "")
+        domain = cookie.get("domain", "")
+        if name.startswith("steamMachineAuth") and "steamcommunity.com" in domain:
+            return cookie.get("value"), name
+        if name.startswith("steamMachineAuth") and "store.steampowered.com" in domain:
+            return cookie.get("value"), name
+
+    return None, None
+
+
 def build_session_from_file(cookie_file):
     state = load_cookie_state(cookie_file)
     cookies = state.get("cookies", [])
 
     steam_login_secure = get_cookie(cookies, "steamLoginSecure", "store.steampowered.com")
     session_id = get_cookie(cookies, "sessionid", "store.steampowered.com")
-    steam_parental = get_cookie(cookies, "steamparental", "store.steampowered.com")
+    parental_cookie_value, parental_cookie_name = get_parental_cookie(cookies)
 
     if not steam_login_secure:
         raise RuntimeError("steamLoginSecure is missing in steam-state.json")
@@ -113,11 +138,31 @@ def build_session_from_file(cookie_file):
     session.cookies.set("steamLoginSecure", steam_login_secure, domain="store.steampowered.com")
     session.cookies.set("sessionid", session_id, domain="store.steampowered.com")
 
-    # Optional: only set if available
-    if steam_parental:
-        session.cookies.set("steamparental", steam_parental, domain="store.steampowered.com")
+    if parental_cookie_value:
+        if parental_cookie_name == "steamparental":
+            session.cookies.set("steamparental", parental_cookie_value, domain="store.steampowered.com")
+        else:
+            session.cookies.set(parental_cookie_name, parental_cookie_value, domain="steamcommunity.com")
 
-    return session, bool(steam_parental)
+    return session, parental_cookie_name
+
+
+def trigger_cookie_refresh():
+    try:
+        response = requests.post(LOGIN_REFRESH_URL, timeout=LOGIN_REFRESH_TIMEOUT)
+    except Exception as e:
+        raise RuntimeError(f"Could not call Steam login refresh endpoint: {e}")
+
+    if response.status_code >= 400:
+        detail = response.text
+        try:
+            detail_json = response.json()
+            detail = detail_json.get("detail") or detail_json.get("message") or response.text
+        except Exception:
+            pass
+        raise RuntimeError(f"Steam login refresh failed ({response.status_code}): {detail}")
+
+    return True
 
 
 def get_access_token(session):
@@ -140,6 +185,67 @@ def get_access_token(session):
         raise RuntimeError("No webapi_token received. Cookie/session may have expired.")
 
     return access_token
+
+
+def get_current_settings(session, access_token):
+    get_url = (
+        "https://api.steampowered.com/IParentalService/GetParentalSettings/v1/"
+        f"?access_token={access_token}&steamid={CHILD_STEAM_ID}"
+    )
+
+    get_resp = session.get(get_url, timeout=10)
+    get_resp.raise_for_status()
+
+    current_settings = get_resp.json().get("response", {}).get("settings")
+    if not current_settings:
+        raise RuntimeError("JSON response did not contain a 'settings' field.")
+
+    return current_settings
+
+
+def save_settings(session, access_token, settings):
+    set_url = (
+        "https://api.steampowered.com/IParentalService/SetParentalSettings/v1/"
+        f"?access_token={access_token}"
+    )
+    set_payload = {
+        "steamid": CHILD_STEAM_ID,
+        "settings": settings
+    }
+
+    set_resp = session.post(
+        set_url,
+        data={"input_json": json.dumps(set_payload)},
+        timeout=10
+    )
+
+    if set_resp.status_code != 200:
+        raise RuntimeError(
+            f"SetParentalSettings was rejected (status {set_resp.status_code}): {set_resp.text}"
+        )
+
+
+def run_with_auto_refresh(worker):
+    last_error = None
+
+    for attempt in range(MAX_LOGIN_REFRESH_ATTEMPTS + 1):
+        try:
+            session, parental_cookie_name = build_session_from_file(COOKIE_FILE)
+            access_token = get_access_token(session)
+            worker(session, access_token)
+            return parental_cookie_name
+        except Exception as e:
+            last_error = e
+            if attempt >= MAX_LOGIN_REFRESH_ATTEMPTS:
+                break
+
+            send_notification(
+                "Steam authentication failed. Starting automatic browser cookie refresh and retrying..."
+            )
+            trigger_cookie_refresh()
+            time.sleep(LOGIN_RETRY_WAIT_SECONDS)
+
+    raise last_error
 
 
 # ==========================================
@@ -165,73 +271,30 @@ if __name__ == "__main__":
     )
     rtime_expires = int(next_midnight.timestamp())
 
-    try:
-        session, has_parental_cookie = build_session_from_file(COOKIE_FILE)
-    except Exception as e:
-        send_notification(f"Error loading cookie file: {e}", is_error=True)
-        sys.exit(1)
+    def worker(session, access_token):
+        current_settings = get_current_settings(session, access_token)
+        current_settings["temporary_playtime_restrictions"] = {
+            "restrictions": {
+                "allowed_time_windows": mask_str,
+                "allowed_daily_minutes": 1440
+            },
+            "rtime_expires": rtime_expires
+        }
+        save_settings(session, access_token, current_settings)
 
     try:
-        access_token = get_access_token(session)
-    except Exception as e:
-        send_notification(f"Error retrieving token: {e}", is_error=True)
-        sys.exit(1)
-
-    get_url = (
-        "https://api.steampowered.com/IParentalService/GetParentalSettings/v1/"
-        f"?access_token={access_token}&steamid={CHILD_STEAM_ID}"
-    )
-
-    try:
-        get_resp = session.get(get_url, timeout=10)
-        get_resp.raise_for_status()
-
-        current_settings = get_resp.json().get("response", {}).get("settings")
-        if not current_settings:
-            send_notification("JSON response did not contain a 'settings' field.", is_error=True)
-            sys.exit(1)
-    except Exception as e:
-        send_notification(f"Error retrieving settings: {e}", is_error=True)
-        sys.exit(1)
-
-    current_settings["temporary_playtime_restrictions"] = {
-        "restrictions": {
-            "allowed_time_windows": mask_str,
-            "allowed_daily_minutes": 1440
-        },
-        "rtime_expires": rtime_expires
-    }
-
-    set_url = (
-        "https://api.steampowered.com/IParentalService/SetParentalSettings/v1/"
-        f"?access_token={access_token}"
-    )
-    set_payload = {
-        "steamid": CHILD_STEAM_ID,
-        "settings": current_settings
-    }
-
-    try:
-        # Important: use session.post instead of requests.post
-        set_resp = session.post(
-            set_url,
-            data={"input_json": json.dumps(set_payload)},
-            timeout=10
+        parental_cookie_name = run_with_auto_refresh(worker)
+        parental_info = (
+            f"using {parental_cookie_name}"
+            if parental_cookie_name else
+            "without parental cookie"
         )
 
-        if set_resp.status_code == 200:
-            parental_info = "with steamparental" if has_parental_cookie else "without steamparental"
-            send_notification(
-                f"Temporary playtime window for today ({start_time} - {end_time}) was set successfully ({parental_info})."
-            )
-            print(f"Success: {start_time}-{end_time} set ({parental_info}).")
-        else:
-            send_notification(
-                f"SetParentalSettings was rejected (status {set_resp.status_code}): {set_resp.text}",
-                is_error=True
-            )
-            sys.exit(1)
+        send_notification(
+            f"Temporary playtime window for today ({start_time} - {end_time}) was set successfully ({parental_info})."
+        )
+        print(f"Success: {start_time}-{end_time} set ({parental_info}).")
 
     except Exception as e:
-        send_notification(f"Network error while saving settings: {e}", is_error=True)
+        send_notification(f"Network or authentication error while saving settings: {e}", is_error=True)
         sys.exit(1)
